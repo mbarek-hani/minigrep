@@ -1,23 +1,18 @@
-use std::fmt::Display;
 use std::result;
 use regex::Regex;
 use colored::Colorize;
+use thiserror::Error;
 
-#[derive(Debug)]
-pub enum Error<'a> {
-    ArgumentParseError(&'a str),
-    FileReadError(Box<dyn std::error::Error>),
+#[derive(Error, Debug)]
+pub enum MiniGrepError {
+    #[error("failed to parse arguments.\nminigrep --help to see usage.")]
+    ArgumentParseError,
+    #[error("failed to compile regex r\"{0}\": {1}")]
+    RegexCompileError(String, String),
+    #[error("Failed to read the file {0}: {1}")]
+    FileReadError(String, String),
 }
 
-impl<'a> Display for Error<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::ArgumentParseError(err) => write!(f, "{}", err)?,
-            Error::FileReadError(err) => write!(f, "{}", err)?,
-        }
-        Ok(())
-    }
-}
 
 pub struct Config {
     pub re: Regex,
@@ -25,17 +20,10 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new<'a>(args: Vec<String>) -> result::Result<Self, Error<'a>> {
-        let query = args.get(1).ok_or(Error::ArgumentParseError(
-            "Failed to parse arguments.Type minigrep --help to see usage.",
-        ))?;
-        let re = Regex::new(query).map_err(|err| {
-            let msg = format!("Failed to compile regex \"{}\": {}", query, err);
-            Error::ArgumentParseError(Box::leak(msg.into_boxed_str()))
-        })?;
-        let filename = args.get(2).ok_or(Error::ArgumentParseError(
-            "Failed to parse arguments.Type minigrep --help to see usage.",
-        ))?;
+    pub fn new(args: Vec<String>) -> result::Result<Self, MiniGrepError> {
+        let query = args.get(1).ok_or(MiniGrepError::ArgumentParseError)?;
+        let re = Regex::new(query).map_err(|err| MiniGrepError::RegexCompileError(query.to_owned(), err.to_string()))?;
+        let filename = args.get(2).ok_or(MiniGrepError::ArgumentParseError)?;
 
         Ok(Self {
             re,

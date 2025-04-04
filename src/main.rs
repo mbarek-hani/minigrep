@@ -4,7 +4,7 @@ use std::process;
 
 use colored::Colorize;
 use minigrep::Config;
-use minigrep::Error;
+use minigrep::MiniGrepError;
 use minigrep::Result;
 
 fn main() {
@@ -29,7 +29,7 @@ fn main() {
     };
 
     let content = fs::read_to_string(&config.filename)
-        .map_err(|err| Error::FileReadError(Box::new(err)))
+        .map_err(|err| MiniGrepError::FileReadError(config.filename.clone(), err.to_string()))
         .unwrap_or_else(|err| {
             eprintln!("{err}");
             process::exit(1)
